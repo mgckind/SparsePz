@@ -4,6 +4,8 @@
 
 This will soon implemented as part as the [MLZ](https://github.com/mgckind/MLZ) package, this is the stand-alone version. The full documentation of MLZ is located [here](http://lcdm.astro.illinois.edu/static/code/mlz/MLZ-1.0/doc/html/index.html)
 
+For more information and a implementation of this technique, check this [article](https://docs.google.com/viewer?a=v&pid=sites&srcid=ZGVmYXVsdGRvbWFpbnxtZ2NraW5kfGd4OjNmNTBkMDJkNWJlM2JhNWQ) 
+
 Requirements:
 
 * scipy
