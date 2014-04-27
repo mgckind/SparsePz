@@ -12,4 +12,12 @@ Requirements:
 * mpi4py (optional for parallel running)
 
 
-To
+To run:
+
+    python example_sparse.py
+
+To check the results:
+
+    python read_sparse.py
+
+
