@@ -2,6 +2,8 @@
 
 ###**Sparse Representation of Photometric Redshift PDFs**
 
+This will soon implemented as part as the [MLZ](https://github.com/mgckind/MLZ) package, this is the stand-alone version. The full documentation of MLZ is located [here](http://lcdm.astro.illinois.edu/static/code/mlz/MLZ-1.0/doc/html/index.html)
+
 Requirements:
 
 * scipy
