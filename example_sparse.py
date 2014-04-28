@@ -10,6 +10,8 @@ except ImportError:
     PLL = 'SERIAL'
 import pyfits as pf
 
+
+#This function is borrowed from MLZ utils
 def get_limits(ntot, Nproc, rank):
     """
     Get limits for farming an array to multiple processors
