@@ -7,8 +7,8 @@ __author__ = 'Matias Carrasco Kind'
 from numpy import *
 from scipy import linalg as sla
 from scipy.optimize import leastsq
-import os,sys
-from scipy import special 
+from scipy import special
+import pyfits as pf
 
 
 def sparse_basis(dictionary, query_vec, n_basis, tolerance=None):
@@ -39,7 +39,7 @@ def sparse_basis(dictionary, query_vec, n_basis, tolerance=None):
     for n_active in xrange(n_basis):
         lam = argmax(abs(dot(dictionary.T, res)))
         if lam < n_active or alpha[lam] ** 2 < machine_eps:
-            n_active-=1
+            n_active -= 1
             break
         if n_active > 0:
             # Updates the Cholesky decomposition of dictionary
@@ -56,12 +56,12 @@ def sparse_basis(dictionary, query_vec, n_basis, tolerance=None):
         # solves LL'x = query_vec as a composition of two triangular systems
         gamma = sla.cho_solve((L[:n_active + 1, :n_active + 1], True), alpha[:n_active + 1], overwrite_b=False)
         res = query_vec - dot(dictionary[:, :n_active + 1], gamma)
-        if tolerance is not None and linalg.norm(res)**2 <= tolerance:
+        if tolerance is not None and linalg.norm(res) ** 2 <= tolerance:
             break
     a_n[idxs[:n_active + 1]] = gamma
     del dictionary
     #return a_n
-    return idxs[:n_active+1], gamma
+    return idxs[:n_active + 1], gamma
 
 
 def reconstruct_pdf(index, vals, zfine, mu, Nmu, sigma, Nsigma, cut=1.e-5):
@@ -69,14 +69,14 @@ def reconstruct_pdf(index, vals, zfine, mu, Nmu, sigma, Nsigma, cut=1.e-5):
     This function reconstruct the pdf from the indices and values and parameters used to create the dictionary with
     Gaussians only
 
-    :param index: List of indices in the dictionary for the selected bases
-    :param vals: values or coefficients corresponding to the listed indices
-    :param zfine: redshift values from the original pdf or used during the sparse representation
-    :param mu: [min_mu, max_mu] values used to create the dictionary
-    :param Nmu: Number of mu values used to create the dictionary
-    :param sigma: [min_sigma, mas_sigma] sigma values used to create the dictionary
-    :param Nsigma: Number of sigma values
-    :param cut: cut threshold when creating the dictionary
+    :param int index: List of indices in the dictionary for the selected bases
+    :param float vals: values or coefficients corresponding to the listed indices
+    :param float zfine: redshift values from the original pdf or used during the sparse representation
+    :param float mu: [min_mu, max_mu] values used to create the dictionary
+    :param int Nmu: Number of mu values used to create the dictionary
+    :param float sigma: [min_sigma, mas_sigma] sigma values used to create the dictionary
+    :param int Nsigma: Number of sigma values
+    :param float cut: cut threshold when creating the dictionary
 
     :return: the pdf normalized so it sums to one
     """
@@ -87,11 +87,11 @@ def reconstruct_pdf(index, vals, zfine, mu, Nmu, sigma, Nsigma, cut=1.e-5):
     for k in xrange(len(index)):
         i = index[k] / Nsigma
         j = index[k] % Nsigma
-        pdft = 1. * exp(-((zfine - zmid[i]) ** 2) / (2.*sig[j]*sig[j]))
+        pdft = 1. * exp(-((zfine - zmid[i]) ** 2) / (2. * sig[j] * sig[j]))
         pdft = where(pdft >= cut, pdft, 0.)
         pdft = pdft / linalg.norm(pdft)
         pdf += pdft * vals[k]
-    #pdf = where(pdf >= cut, pdf, 0)
+        #pdf = where(pdf >= cut, pdf, 0)
     pdf = where(greater(pdf, max(pdf) * 0.005), pdf, 0.)
     if sum(pdf) > 0: pdf = pdf / sum(pdf)
     return pdf
@@ -101,13 +101,13 @@ def reconstruct_pdf_f(index, vals, zfine, mu, Nmu, sigma, Nsigma):
     """
     This function returns the reconstructed pdf in a functional analytical form, to be used in a analytical form"
 
-    :param index: List of indices in the dictionary for the selected bases
-    :param vals: values or coefficients corresponding to the listed indices
-    :param zfine: redshift values from the original pdf or used during the sparse representation
-    :param mu: [min_mu, max_mu] values used to create the dictionary
-    :param Nmu: Number of mu values used to create the dictionary
-    :param sigma: [min_sigma, mas_sigma] sigma values used to create the dictionary
-    :param Nsigma: Number of sigma values
+    :param int index: List of indices in the dictionary for the selected bases
+    :param float vals: values or coefficients corresponding to the listed indices
+    :param float zfine: redshift values from the original pdf or used during the sparse representation
+    :param float mu: [min_mu, max_mu] values used to create the dictionary
+    :param int Nmu: Number of mu values used to create the dictionary
+    :param float sigma: [min_sigma, mas_sigma] sigma values used to create the dictionary
+    :param int Nsigma: Number of sigma values
 
     :return: a function representing the pdf
     """
@@ -115,19 +115,20 @@ def reconstruct_pdf_f(index, vals, zfine, mu, Nmu, sigma, Nsigma):
     zmid = linspace(mu[0], mu[1], Nmu)
     sig = linspace(sigma[0], sigma[1], Nsigma)
     pdf = zeros(len(zfine))
+
     def f(x):
-        ft=0.
+        ft = 0.
         for k in xrange(len(index)):
             i = index[k] / Nsigma
             j = index[k] % Nsigma
-            pdft = 1. * exp(-((zfine - zmid[i]) ** 2) / (2.*sig[j]*sig[j]))
-            ft2 = 1. * exp(-((x - zmid[i]) ** 2) / (2.*sig[j]*sig[j]))
+            pdft = 1. * exp(-((zfine - zmid[i]) ** 2) / (2. * sig[j] * sig[j]))
+            ft2 = 1. * exp(-((x - zmid[i]) ** 2) / (2. * sig[j] * sig[j]))
             #pdft = where(pdft >= cut, pdft, 0.)
             pdft = where(greater(pdft, max(pdft) * 0.005), pdft, 0.)
-            ft += 1./linalg.norm(pdft)*ft2 * vals[k]
+            ft += 1. / linalg.norm(pdft) * ft2 * vals[k]
         return ft
-    return f
 
+    return f
 
 
 def create_gaussian_dict(zfine, mu, Nmu, sigma, Nsigma, cut=1.e-5):
@@ -153,14 +154,14 @@ def create_gaussian_dict(zfine, mu, Nmu, sigma, Nsigma, cut=1.e-5):
     k = 0
     for i in xrange(Nmu):
         for j in xrange(Nsigma):
-            pdft = 1. * exp(-((zfine - zmid[i]) ** 2) / (2.*sig[j]*sig[j]))
+            pdft = 1. * exp(-((zfine - zmid[i]) ** 2) / (2. * sig[j] * sig[j]))
             pdft = where(pdft >= cut, pdft, 0.)
             #pdft = where(greater(pdft, max(pdft) * 0.005), pdft, 0.)
             A[:, k] = pdft / linalg.norm(pdft)
             k += 1
     return A
-    
-    
+
+
 def create_voigt_dict(zfine, mu, Nmu, sigma, Nsigma, Nv, cut=1.e-5):
     """
     Creates a gaussian-voigt dictionary at the same resolution as the original PDF
@@ -180,7 +181,7 @@ def create_voigt_dict(zfine, mu, Nmu, sigma, Nsigma, Nv, cut=1.e-5):
 
     zmid = linspace(mu[0], mu[1], Nmu)
     sig = linspace(sigma[0], sigma[1], Nsigma)
-    gamma = linspace(0,0.5,Nv)
+    gamma = linspace(0, 0.5, Nv)
     NA = Nmu * Nsigma * Nv
     Npdf = len(zfine)
     A = zeros((Npdf, NA))
@@ -189,7 +190,7 @@ def create_voigt_dict(zfine, mu, Nmu, sigma, Nsigma, Nv, cut=1.e-5):
         for j in xrange(Nsigma):
             for k in xrange(Nv):
                 #pdft = 1. * exp(-((zfine - zmid[i]) ** 2) / (2.*sig[j]*sig[j]))
-                pdft = voigt(zfine,zmid[i],sig[j],sig[j]*gamma[k])
+                pdft = voigt(zfine, zmid[i], sig[j], sig[j] * gamma[k])
                 pdft = where(pdft >= cut, pdft, 0.)
                 A[:, kk] = pdft / linalg.norm(pdft)
                 kk += 1
@@ -201,36 +202,89 @@ def reconstruct_pdf_v(index, vals, zfine, mu, Nmu, sigma, Nsigma, Nv, cut=1.e-5)
     This function reconstruct the pdf from the indices and values and parameters used to create the dictionary with
     Gaussians and Voigt profiles
 
-    :param index: List of indices in the dictionary for the selected bases
-    :param vals: values or coefficients corresponding to the listed indices
-    :param zfine: redshift values from the original pdf or used during the sparse representation
-    :param mu: [min_mu, max_mu] values used to create the dictionary
-    :param Nmu: Number of mu values used to create the dictionary
-    :param sigma: [min_sigma, mas_sigma] sigma values used to create the dictionary
-    :param Nsigma: Number of sigma values
-    :param Nv: Number of Voigt profiles used to create dictionary
-    :param cut: cut threshold when creating the dictionary
+    :param int index: List of indices in the dictionary for the selected bases
+    :param float vals: values or coefficients corresponding to the listed indices
+    :param float zfine: redshift values from the original pdf or used during the sparse representation
+    :param float mu: [min_mu, max_mu] values used to create the dictionary
+    :param int Nmu: Number of mu values used to create the dictionary
+    :param float sigma: [min_sigma, mas_sigma] sigma values used to create the dictionary
+    :param int Nsigma: Number of sigma values
+    :param int Nv: Number of Voigt profiles used to create dictionary
+    :param float cut: cut threshold when creating the dictionary
 
     :return: the pdf normalized so it sums to one
     """
 
     zmid = linspace(mu[0], mu[1], Nmu)
     sig = linspace(sigma[0], sigma[1], Nsigma)
-    gamma = linspace(0,0.5,Nv)
+    gamma = linspace(0, 0.5, Nv)
     pdf = zeros(len(zfine))
     for kk in xrange(len(index)):
-        i = index[kk] / (Nsigma*Nv)
-        j = (index[kk] % (Nsigma*Nv))/Nv
-        k = (index[kk] % (Nsigma*Nv))%Nv
-        pdft = voigt(zfine,zmid[i],sig[j],sig[j]*gamma[k])
+        i = index[kk] / (Nsigma * Nv)
+        j = (index[kk] % (Nsigma * Nv)) / Nv
+        k = (index[kk] % (Nsigma * Nv)) % Nv
+        pdft = voigt(zfine, zmid[i], sig[j], sig[j] * gamma[k])
         pdft = where(pdft >= cut, pdft, 0.)
         pdft = pdft / linalg.norm(pdft)
         pdf += pdft * vals[kk]
-    #pdf = where(pdf >= cut, pdf, 0)
+        #pdf = where(pdf >= cut, pdf, 0)
     pdf = where(greater(pdf, max(pdf) * 0.005), pdf, 0.)
     if sum(pdf) > 0: pdf = pdf / sum(pdf)
     return pdf
 
+
+def reconstruct_pdf_int(long_index, header, cut=1.e-5):
+    """
+    This function reconstruct the pdf from the integer indices only and the parameters used to create the dictionary
+    with Gaussians and Voigt profiles
+
+    :param int long_index: List of indices including coefficients (32bits integer array)
+    :param dict header: Dictionary of the fits file header with information used to create dictionary and sparse indices
+    :param float cut: cut threshold when creating the dictionary
+
+    :return: the pdf normalized so it sums to one
+    """
+
+    Ncoef = header['Ncoef']
+    zfine = header['z']
+    mu = header['mu']
+    Nmu = header['Nmu']
+    sigma = header['sig']
+    Nsigma = header['Nsig']
+    Nv = header['Nv']
+
+    VALS = linspace(0, 1, Ncoef)
+    dVals = VALS[1] - VALS[0]
+    sp_ind = array(map(get_N, long_index))
+    spi = sp_ind[:, 0]
+    Dind2 = sp_ind[:, 1]
+    vals = spi * dVals
+    rep_pdf = reconstruct_pdf_v(Dind2, vals, zfine, mu, Nmu, sigma, Nsigma, Nv)
+    return rep_pdf
+
+
+def read_header(fits_file):
+    """
+    Reads the header from a fits file that stores the sparse indices
+
+    :param str fits_file: Name of fits file
+    :return: Dictionary of header to be used to reconstruct PDF
+    """
+
+    head = {}
+    F = pf.open(fits_file)
+    H = F[0].header
+    head['Ntot'] = H['N_TOT']
+    head['Nmu'] = H['N_MU']
+    head['Nsig'] = H['N_SIGMA']
+    head['Nv'] = H['N_VOIGT']
+    head['Ncoef'] = H['N_COEF']
+    head['Nspa'] = H['N_SPARSE']
+    head['mu'] = [H['MU1'], H['MU2']]
+    head['sig'] = [H['SIGMA1'], H['SIGMA2']]
+    head['z'] = F[1].data.field('redshift')
+    F.close()
+    return head
 
 def get_npeaks(z, pdf):
     """
@@ -258,7 +312,7 @@ def get_npeaks(z, pdf):
         if not dy == 0.: curr = sign(dy)
     local_min.append(w[-1]) # last non zero
     N_peak = len(local_max)
-    N_peak = min(N_peak,15) #Up to 15 Gaussians, can be modified
+    N_peak = min(N_peak, 15) #Up to 15 Gaussians, can be modified
     return N_peak, local_max, local_min, local_in
 
 
@@ -322,19 +376,27 @@ def fit_multi_gauss(z, pdf, tolerance=1.49e-8):
     return out_p
 
 
-def voigt(x,x_mean,sigma,gamma):
-     """
+def voigt(x, x_mean, sigma, gamma):
+    """
      Voigt profile
      V(x,sig,gam) = Re(w(z)), w(z) Faddeeva function
      z = (x+j*gamma)/(sigma*sqrt(2))
-     """
-     
-     x=x-x_mean
-     z=(x+1j*gamma)/(sqrt(2.)*sigma)
-     It=special.wofz(z).real
-     return It
 
-def combine_int(Ncoef,Nbase):
+     :param float x: the x-axis values (redshift)
+     :param float x_mean: Mean of the gaussian or Voigt
+     :param float sigma: Sigma of the original Gaussian when gamma=0
+     :param float gamma: Gamma parameter for the Lorentzian profile (Voigt)
+
+     :return: The real values of the Voigt profile at points x
+     """
+
+    x = x - x_mean
+    z = (x + 1j * gamma) / (sqrt(2.) * sigma)
+    It = special.wofz(z).real
+    return It
+
+
+def combine_int(Ncoef, Nbase):
     """
     combine index of base (up to 62500 bases) and value (16 bits integer with sign) in a 32 bit integer
     First half of word is for the value and second half for the index
@@ -344,6 +406,7 @@ def combine_int(Ncoef,Nbase):
     :return: 32 bits integer
     """
     return (Ncoef << 16) | Nbase
+
 
 def get_N(longN):
     """
@@ -355,15 +418,17 @@ def get_N(longN):
 
     :return: Ncoef, Nbase both 16 bits integer
     """
-    return (longN >> 16), (longN & (2**16-1))
+    return (longN >> 16), (longN & (2 ** 16 - 1))
 
-def combine3(a,b,c):
+
+def combine3(a, b, c):
     # combine 3 integer,
     # a int8 (0--255) first half
     # b int6 (0--63) after a
     # c int4 (0--3) after b, last 2 bits
-    return (a<<8 | (b<<2)) | c
+    return (a << 8 | (b << 2)) | c
+
 
 def extract3(d):
     #extract a,b,c (int8,int6,int2) from int16
-    return d>>8, (d & (2**8-1))>>2, d & (2**2-1)
+    return d >> 8, (d & (2 ** 8 - 1)) >> 2, d & (2 ** 2 - 1)

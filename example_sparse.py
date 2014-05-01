@@ -3,15 +3,16 @@ __author__ = 'Matias Carrasco Kind'
 from numpy import *
 import pdf_storage as ps
 import sys, os
+
 try:
     from mpi4py import MPI
+
     PLL = 'MPI'
 except ImportError:
     PLL = 'SERIAL'
 import pyfits as pf
 
 
-#This function is borrowed from MLZ utils
 def get_limits(ntot, Nproc, rank):
     """
     Get limits for farming an array to multiple processors
@@ -32,19 +33,20 @@ def get_limits(ntot, Nproc, rank):
     s1 = int(st + jpproc[rank]) + 1
     return s0, s1
 
-if PLL=='MPI':
+
+if PLL == 'MPI':
     comm = MPI.COMM_WORLD
     size = comm.Get_size()
     rank = comm.Get_rank()
 else:
-    size=1
-    rank=0
-    
+    size = 1
+    rank = 0
+
 filein = 'CFHTLens_sample.P.npy'
 #FORMAT FILE, EACH ROW IS THE PDF FOR EACH GALAXY, LAST ROW IS THE REDSHIFT POSITION
 
 P = load(filein)
-Ntot = len(P)-1 #last row is redshift
+Ntot = len(P) - 1 #last row is redshift
 
 if rank == 0:
     print "Total Galaxies = ", Ntot
@@ -63,7 +65,6 @@ Nv = 3
 Nsig = 80
 NA = Nmu * Nsig * Nv
 
-
 if rank == 0:
     print 'Nmu, Nsig, Nv = ', '[', Nmu, ',', Nsig, ',', Nv, ']'
     print 'Total bases in dictionary', NA
@@ -80,15 +81,15 @@ Ncoef = 32001
 AA = linspace(0, 1, Ncoef)
 Da = AA[1] - AA[0]
 
-if rank==0:
-    print 'Nsparse (number of bases) = ',Nsparse
+if rank == 0:
+    print 'Nsparse (number of bases) = ', Nsparse
 
 bigD['z'] = z
 bigD['mu'] = mu
 bigD['sig'] = sig
 bigD['dims'] = [Nmu, Nsig, Nv, Ncoef]
 bigD['Nsparse'] = Nsparse
-bigD['Ntot']=Ntot
+bigD['Ntot'] = Ntot
 
 if rank == 0:
     for i in xrange(size):
@@ -112,62 +113,61 @@ for ik in xrange(Ntot):
         pdf0 /= sum(pdf0)
     else:
         continue
-    np=Nsparse
+    np = Nsparse
     Dind, Dval = ps.sparse_basis(A, pdf0, np)
-    if len(Dind) <=1 : continue
+    if len(Dind) <= 1: continue
     bigD[k]['sparse'] = [Dind, Dval]
-    if max(Dval) > 0 :
+    if max(Dval) > 0:
         Dvalm = Dval / max(Dval)
         index = array(map(round, (Dvalm / Da)), dtype='int')
     else:
-        index=zeros(len(Dind))
+        index = zeros(len(Dind))
     bigD[k]['sparse_ind'] = array(map(ps.combine_int, index, Dind))
 
     #swap back columns
     A[:, [Dind]] = A[:, [arange(len(Dind))]]
 
+print 'Done with processor: ', rank
+if PLL == 'MPI': comm.Barrier()
 
-print 'Done with processor: ',rank
-if PLL=='MPI':comm.Barrier()
-
-if PLL=='MPI':
+if PLL == 'MPI':
     if rank == 0:
-        for srank in xrange(1,size):
-            temp=comm.recv(source=srank, tag=srank*2)
+        for srank in xrange(1, size):
+            temp = comm.recv(source=srank, tag=srank * 2)
             bigD.update(temp)
             del temp
     else:
-        comm.send(bigD,dest=0,tag=rank*2)
+        comm.send(bigD, dest=0, tag=rank * 2)
     comm.Barrier()
-    
-if rank==0:
+
+if rank == 0:
     print 'Writing fits file (example_out.fits)'
-    ALL=zeros((Ntot,Nsparse),dtype='int')
+    ALL = zeros((Ntot, Nsparse), dtype='int')
     for i in xrange(Ntot):
         if bigD.has_key(i):
-            idd=bigD[i]['sparse_ind']
-            ALL[i,0:len(idd)]=idd
-    head=pf.Header()
-    head['N_TOT']=Ntot
-    head['N_MU']=bigD['dims'][0]
-    head['N_SIGMA']=bigD['dims'][1]
-    head['N_VOIGT']=bigD['dims'][2]
-    head['N_COEF']=bigD['dims'][3]
-    head['N_SPARSE']=bigD['Nsparse']
-    head['MU1']=bigD['mu'][0]
-    head['MU2']=bigD['mu'][1]
-    head['SIGMA1']=bigD['sig'][0]
-    head['SIGMA2']=bigD['sig'][1]
-    col1=pf.Column(name='redshift',format='E',array=bigD['z'])
-    fmt='%dJ' % bigD['Nsparse']
-    col2=pf.Column(name='Sparse_indices',format=fmt,array=ALL)
-    table1=pf.new_table(pf.ColDefs([col1]))
-    table2=pf.new_table(pf.ColDefs([col2]))
-    prihdu=pf.PrimaryHDU(header=head)
-    hdulist = pf.HDUList([prihdu,table1,table2])
-    hdulist.writeto('example_out.fits',clobber=True)
+            idd = bigD[i]['sparse_ind']
+            ALL[i, 0:len(idd)] = idd
+    head = pf.Header()
+    head['N_TOT'] = Ntot
+    head['N_MU'] = bigD['dims'][0]
+    head['N_SIGMA'] = bigD['dims'][1]
+    head['N_VOIGT'] = bigD['dims'][2]
+    head['N_COEF'] = bigD['dims'][3]
+    head['N_SPARSE'] = bigD['Nsparse']
+    head['MU1'] = bigD['mu'][0]
+    head['MU2'] = bigD['mu'][1]
+    head['SIGMA1'] = bigD['sig'][0]
+    head['SIGMA2'] = bigD['sig'][1]
+    col1 = pf.Column(name='redshift', format='E', array=bigD['z'])
+    fmt = '%dJ' % bigD['Nsparse']
+    col2 = pf.Column(name='Sparse_indices', format=fmt, array=ALL)
+    table1 = pf.new_table(pf.ColDefs([col1]))
+    table2 = pf.new_table(pf.ColDefs([col2]))
+    prihdu = pf.PrimaryHDU(header=head)
+    hdulist = pf.HDUList([prihdu, table1, table2])
+    hdulist.writeto('example_out.fits', clobber=True)
 
-if PLL=='MPI': 
+if PLL == 'MPI':
     comm.Barrier()
     MPI.Finalize()
 
