@@ -88,7 +88,7 @@ bigD['z'] = z
 bigD['mu'] = mu
 bigD['sig'] = sig
 bigD['dims'] = [Nmu, Nsig, Nv, Ncoef]
-bigD['Nsparse'] = Nsparse
+bigD['N_SPARSE'] = Nsparse
 bigD['Ntot'] = Ntot
 
 if rank == 0:
@@ -118,10 +118,13 @@ for ik in xrange(Ntot):
     if len(Dind) <= 1: continue
     bigD[k]['sparse'] = [Dind, Dval]
     if max(Dval) > 0:
+        dval0=Dval[0]
         Dvalm = Dval / max(Dval)
         index = array(map(round, (Dvalm / Da)), dtype='int')
+        index0=int(round(dval0/Da))
+        index[0]=index0
     else:
-        index = zeros(len(Dind))
+        index = zeros(len(Dind), dtype='int')
     bigD[k]['sparse_ind'] = array(map(ps.combine_int, index, Dind))
 
     #swap back columns
@@ -153,16 +156,16 @@ if rank == 0:
     head['N_SIGMA'] = bigD['dims'][1]
     head['N_VOIGT'] = bigD['dims'][2]
     head['N_COEF'] = bigD['dims'][3]
-    head['N_SPARSE'] = bigD['Nsparse']
+    head['N_SPARSE'] = bigD['N_SPARSE']
     head['MU1'] = bigD['mu'][0]
     head['MU2'] = bigD['mu'][1]
     head['SIGMA1'] = bigD['sig'][0]
     head['SIGMA2'] = bigD['sig'][1]
     col1 = pf.Column(name='redshift', format='E', array=bigD['z'])
-    fmt = '%dJ' % bigD['Nsparse']
+    fmt = '%dJ' % bigD['N_SPARSE']
     col2 = pf.Column(name='Sparse_indices', format=fmt, array=ALL)
-    table1 = pf.new_table(pf.ColDefs([col1]))
-    table2 = pf.new_table(pf.ColDefs([col2]))
+    table1 = pf.BinTableHDU.from_columns(pf.ColDefs([col1]))
+    table2 = pf.BinTableHDU.from_columns(pf.ColDefs([col2]))
     prihdu = pf.PrimaryHDU(header=head)
     hdulist = pf.HDUList([prihdu, table1, table2])
     hdulist.writeto('example_out.fits', clobber=True)

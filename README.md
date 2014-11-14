@@ -11,7 +11,7 @@ Requirements:
 * scipy
 * matplotlib
 * numpy
-* pyfits (to store output file)
+* pyfits (to store output file) >= 3.3
 * mpi4py (optional for parallel running)
 
 
