@@ -1,6 +1,6 @@
-##SparsePz
+## SparsePz
 
-###**Sparse Representation of Photometric Redshift PDFs**
+### **Sparse Representation of Photometric Redshift PDFs**
 
 This package will soon implemented as part as the [MLZ](https://github.com/mgckind/MLZ) package repository. This is the standalone version. The full documentation of MLZ is located [here](http://lcdm.astro.illinois.edu/static/code/mlz/MLZ-1.0/doc/html/index.html)
 
